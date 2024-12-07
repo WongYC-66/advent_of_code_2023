@@ -46,29 +46,42 @@ const to2Digit = (str) => {
         eight: 8,
         nine: 9,
     }
-    const searchPattern = [
-        '1', 'one',
-        '2', 'two',
-        '3', 'three',
-        '4', 'four',
-        '5', 'five',
-        '6', 'six',
-        '7', 'seven',
-        '8', 'eight',
-        '9', 'nine'
-    ]
 
-    let pairs = [
-        findDigit(str, searchPattern),
-        findLastDigit(str, searchPattern),
-    ]
+    // ==== solution-1
+    // const searchPattern = [
+    //     '1', 'one',
+    //     '2', 'two',
+    //     '3', 'three',
+    //     '4', 'four',
+    //     '5', 'five',
+    //     '6', 'six',
+    //     '7', 'seven',
+    //     '8', 'eight',
+    //     '9', 'nine'
+    // ]
 
-    pairs = pairs.map(str => {
+    // let pairs = [
+    //     findDigit(str, searchPattern),
+    //     findLastDigit(str, searchPattern),
+    // ]
+
+    // pairs = pairs.map(str => {
+    //     if (str in numMap) return numMap[str]
+    //     return str
+    // })
+    // console.log(pairs)
+    // return Number(pairs.join(''))
+
+    // ==== solution-2
+    let regex = /(?=(1|2|3|4|5|6|7|8|9|one|two|three|four|five|six|seven|eight|nine))/g
+    let nums = [...str.matchAll(regex)].map(arr => arr[1])
+    nums = nums.map(str => {
         if (str in numMap) return numMap[str]
         return str
     })
-    console.log(pairs)
-    return Number(pairs.join(''))
+    console.log(nums)
+    let pairs = [nums.at(0), nums.at(-1)]
+    return Number(pairs.join('')) 
 }
 
 const main = async () => {

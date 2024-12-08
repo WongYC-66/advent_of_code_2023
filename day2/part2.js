@@ -1,4 +1,4 @@
-// https://adventofcode.com/2023/day/1
+// https://adventofcode.com/2023/day/2
 const fs = require('node:fs/promises');
 
 const readFile = async (fileName) => {

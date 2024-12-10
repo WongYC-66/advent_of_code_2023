@@ -1,4 +1,4 @@
-// https://adventofcode.com/2023/day/7
+// https://adventofcode.com/2023/day/8
 const { readFile } = require("../lib.js")
 
 const extractData = (rawFile) => {

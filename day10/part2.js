@@ -19,18 +19,6 @@ const printGrid = (grid) => {
     console.log(grid.map(arr => arr.join('')))
 }
 
-const labelBoundary = (grid, boundaryCoords) => {
-    let M = grid.length
-    let N = grid[0].length
-    let plotted_grid = Array.from(Array(M), () => Array(N).fill("."))
-
-    for (let str of boundaryCoords) {
-        let [r, c] = str.split('-')
-        plotted_grid[r][c] = '#'
-    }
-    return plotted_grid
-}
-
 const findS = (grid) => {
     let M = grid.length
     let N = grid[0].length
@@ -39,51 +27,6 @@ const findS = (grid) => {
             if (grid[r][c] == 'S') return [r, c]
         }
     }
-}
-
-const solve = (grid) => {
-    let [boundaryCoords, boundaryIntervals] = getBoundaryCoords(grid)
-
-    let label_grid = labelBoundary(grid, boundaryCoords)
-    printGrid(label_grid)
-    console.log(boundaryIntervals)
-
-    // use ray casting algorithm
-    const ROW_MAX = grid.length
-    const COL_MAX = grid[0].length
-
-    let res = 0
-    for (let r = 0; r < ROW_MAX; r++) {
-        for (let c = 0; c < COL_MAX; c++) {
-            let cell = grid[r][c]
-            if (cell != '.') continue
-            if (isCrossBoundaryCountOdd(r, c, boundaryIntervals)){ 
-                res += 1
-                label_grid[r][c] = 'I'
-            }
-        }
-    }
-    printGrid(label_grid)
-    return res
-}
-
-const isCrossBoundaryCountOdd = (r, c, boundaryIntervals) => {
-    // to the top
-    let count = 0
-
-    const isVerticalIntersect = ([r2, c2], [r3, c3]) => {
-        // assume from bottom[node] to top boundary
-        if(r <= r2 || r <= r3) return false   // if line below node, invalid
-        let minC = Math.min(c2, c3)
-        let maxC = Math.max(c2, c3)
-        return (minC <= c && c <= maxC) // is within column
-    }
-
-    boundaryIntervals.forEach(([p1, p2]) => {
-        if(isVerticalIntersect(p1, p2)) count += 1
-    })
-    console.log(r, c, count, count % 2 === 1)
-    return count % 2 === 1
 }
 
 const getBoundaryCoords = (grid) => {
@@ -114,17 +57,13 @@ const getBoundaryCoords = (grid) => {
     }
 
     let seen = new Set()
-    let boundaryIntervals = []
 
     let [r, c] = findS(grid)
-    let turningPoint = [r, c] // default "S"
     let steps = 0
 
     while (true) {
         steps += 1
         let coord = `${r}-${c}`
-        let currR = r
-        let currC = c
 
         if (seen.has(coord) || coord == `null-null`) {
             break
@@ -148,27 +87,62 @@ const getBoundaryCoords = (grid) => {
         } else {
             [r, c] = getNextCoord(r, c)
         }
+    }
 
-        const isBackToS = (r == null && c == null)
-        // record intervals if next loop is a turning point
-        if (isBackToS || !/[|\-.]/.test(grid[r][c])) {  // is TurningPoint
-            boundaryIntervals.push([turningPoint, [currR, currC]])
-            turningPoint = [r, c]
+    return seen
+}
+
+const solve = (grid) => {
+    let boundaryCoords = getBoundaryCoords(grid)
+    console.log(boundaryCoords)
+
+    // ray-casting algo - Horizontal-crossing-boundary
+    // https://www.youtube.com/watch?v=zhmzPQwgPg0&t=501s
+
+    let enclosed_tiles = 0
+
+    let M = grid.length
+    let N = grid[0].length
+
+    const plotted_grid = grid.map(str => str.split(''))
+
+    for (let r = 0; r < M; r++) {
+        // imagine 1 line from this point to the LeftMost of grid
+        // crossable =>   |   FJ  F---J   L7  L----7
+        let cross = 0
+
+        for (let c = 0; c < N; c++) {
+            let char = grid[r][c]
+            let str = `${r}-${c}`
+
+            if (boundaryCoords.has(str)) {   // filter out junk pipe that is not connected 
+                if (['F', '7', '|'].includes(char)) cross += 1
+            } else {
+                // console.log({ r, c, cross })
+                if (cross % 2 === 1) {
+                    // isOdd
+                    enclosed_tiles += 1
+                    plotted_grid[r][c] = 'I'
+                } else {
+                    plotted_grid[r][c] = 'O'
+                }
+            }
         }
     }
 
-    // return seen
-    return [seen, boundaryIntervals]
+    printGrid(plotted_grid)
+    return enclosed_tiles
 }
 
+
 const main = async (fileName) => {
-    // fileName = fileName ? fileName : "sample2.txt"
+    fileName = fileName ? fileName : "sample2.txt"
     // fileName = fileName ? fileName : "sample5.txt"
     // fileName = fileName ? fileName : "sample3.txt"
-    fileName = fileName ? fileName : "sample4.txt"
+    // fileName = fileName ? fileName : "sample4.txt"
     // fileName = fileName ? fileName : "input.txt"
     let rawFile = await readFile(`${fileName}`)
-    // console.log(rawFile)
+    console.log(rawFile)
     rawFile = rawFile
         .replaceAll("\r", "")
         .split("\n")
@@ -181,7 +155,7 @@ const main = async (fileName) => {
     // expected sample4.txt = 10
     // expected sample5.txt = 4
     // expected input.txt = ???
-    //  149 too low
+    // 399 too low
 }
 
 

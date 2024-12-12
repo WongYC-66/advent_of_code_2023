@@ -15,10 +15,6 @@ let charToDir = {
     'F': [S, E],
 }
 
-const printGrid = (grid) => {
-    console.log(grid.map(arr => arr.join('')))
-}
-
 const findS = (grid) => {
     let M = grid.length
     let N = grid[0].length
@@ -27,6 +23,36 @@ const findS = (grid) => {
             if (grid[r][c] == 'S') return [r, c]
         }
     }
+}
+
+function calcPolygonArea(vertices) {
+    let area = 0;
+
+    // area
+
+    // p1 = (1, 6), p2 = (3,1), p3 = (7,2)
+    // 2A =  |1 3| + |3 7| + |7 1|
+    //       |6 1|   |1 2|   |2 6|
+    // 2A = (1 - 18) + (6 - 7) + (42 - 2)
+    // A = () / 2
+    // Math.abs(A)
+
+    for (let i = 0; i < vertices.length; i++) {
+        let p1 = vertices[i]
+        let p2 = vertices[(i + 1) % vertices.length]
+
+        area += (p1.x * p2.y)
+        area -= (p1.y * p2.x)
+    }
+
+    let edge = 0
+    for (let i = 0; i < vertices.length; i++) {
+        let p1 = vertices[i]
+        let p2 = vertices[(i + 1) % vertices.length]
+        edge += Math.abs((p1.x - p2.x) + (p1.y - p2.y))
+    }
+
+    return (Math.abs(area) / 2) - (edge / 2) + 1
 }
 
 const getBoundaryCoords = (grid) => {
@@ -57,6 +83,7 @@ const getBoundaryCoords = (grid) => {
     }
 
     let seen = new Set()
+    let vertices = []
 
     let [r, c] = findS(grid)
     let steps = 0
@@ -71,8 +98,13 @@ const getBoundaryCoords = (grid) => {
         seen.add(coord)
 
         let char = grid[r][c]
-        // console.log(char, coord)
 
+        // if is turningPoint = vertex
+        if (/[SLJF7]/.test(char)) {
+            vertices.push({ x: c, y: r })
+        }
+
+        // find next
         if (char == 'S') {
             for (let [dr, dc] of [N, S, E, W]) {
                 let nR = r + dr
@@ -87,60 +119,65 @@ const getBoundaryCoords = (grid) => {
         } else {
             [r, c] = getNextCoord(r, c)
         }
+
+
     }
 
-    return seen
+    return [seen, vertices]
 }
 
 const solve = (grid) => {
-    let boundaryCoords = getBoundaryCoords(grid)
-    console.log(boundaryCoords)
+    let [boundaryCoords, vertices] = getBoundaryCoords(grid)
+
+    let enclosed_area = calcPolygonArea(vertices)    
+    return enclosed_area
 
     // ray-casting algo - Horizontal-crossing-boundary
     // https://www.youtube.com/watch?v=zhmzPQwgPg0&t=501s
 
-    let enclosed_tiles = 0
+    // let enclosed_tiles = 0
 
-    let M = grid.length
-    let N = grid[0].length
+    // let M = grid.length
+    // let N = grid[0].length
 
-    const plotted_grid = grid.map(str => str.split(''))
+    // const plotted_grid = grid.map(str => str.split(''))
 
-    for (let r = 0; r < M; r++) {
-        // imagine 1 line from this point to the LeftMost of grid
-        // crossable =>   |   FJ  F---J   L7  L----7
-        let cross = 0
+    // for (let r = 0; r < M; r++) {
+    //     // imagine 1 line from this point to the LeftMost of grid
+    //     // crossable =>   |   FJ  F---J   L7  L----7
+    //     let cross = 0
 
-        for (let c = 0; c < N; c++) {
-            let char = grid[r][c]
-            let str = `${r}-${c}`
+    //     for (let c = 0; c < N; c++) {
+    //         let char = grid[r][c]
+    //         let str = `${r}-${c}`
 
-            if (boundaryCoords.has(str)) {   // filter out junk pipe that is not connected 
-                if (['F', '7', '|'].includes(char)) cross += 1
-            } else {
-                // console.log({ r, c, cross })
-                if (cross % 2 === 1) {
-                    // isOdd
-                    enclosed_tiles += 1
-                    plotted_grid[r][c] = 'I'
-                } else {
-                    plotted_grid[r][c] = 'O'
-                }
-            }
-        }
-    }
+    //         if (boundaryCoords.has(str)) {   // filter out junk pipe that is not connected 
+    //             if (['F', '7', '|'].includes(char)) cross += 1
+    //         } else {
+    //             // console.log({ r, c, cross })
+    //             if (cross % 2 === 1) {
+    //                 // isOdd
+    //                 enclosed_tiles += 1
+    //                 plotted_grid[r][c] = 'I'
+    //             } else {
+    //                 plotted_grid[r][c] = 'O'
+    //             }
+    //         }
+    //     }
+    // }
 
-    printGrid(plotted_grid)
-    return enclosed_tiles
+    // printGrid(plotted_grid)
+
+    // return enclosed_tiles
 }
 
 
 const main = async (fileName) => {
-    fileName = fileName ? fileName : "sample2.txt"
+    // fileName = fileName ? fileName : "sample2.txt"
     // fileName = fileName ? fileName : "sample5.txt"
     // fileName = fileName ? fileName : "sample3.txt"
     // fileName = fileName ? fileName : "sample4.txt"
-    // fileName = fileName ? fileName : "input.txt"
+    fileName = fileName ? fileName : "input.txt"
     let rawFile = await readFile(`${fileName}`)
     console.log(rawFile)
     rawFile = rawFile
@@ -154,8 +191,7 @@ const main = async (fileName) => {
     // expected sample3.txt = 8
     // expected sample4.txt = 10
     // expected sample5.txt = 4
-    // expected input.txt = ???
-    // 399 too low
+    // expected input.txt = 407
 }
 
 

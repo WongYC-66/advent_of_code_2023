@@ -13,6 +13,7 @@
     "jest": "^29.7.0"
   },
   "dependencies": {
-    "@datastructures-js/priority-queue": "^6.3.1"
+    "@datastructures-js/priority-queue": "^6.3.1",
+    "hex2dec": "^1.1.2"
   }
 }

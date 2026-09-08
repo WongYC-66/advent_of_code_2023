@@ -1,158 +1,166 @@
 const fs = require("fs");
+const { PriorityQueue } = require('@datastructures-js/priority-queue');
 
-class Block {
-    constructor(x1, y1, z1, x2, y2, z2, label) {
-        this.x1 = x1
-        this.y1 = y1
-        this.z1 = z1
-        this.x2 = x2
-        this.y2 = y2
-        this.z2 = z2
-        this.label = label
+// npm install @datastructures-js/priority-queue
+
+
+
+const solve = (arr) => {
+
+    const M = arr.length
+    const N = arr[0].length
+    // START = [0, 1]
+    // END = [M -1 , N - 2]
+
+    const dirs = [
+        [-1, 0],        // dr,dc,symbolCannot
+        [+1, 0],
+        [0, -1],
+        [0, +1],
+    ]
+
+
+    const checkIfJunction = (r, c) => {
+        if (arr[r][c] == "#") return false
+        let count = 0
+        for (let [dr, dc] of dirs) {
+            let nR = r + dr
+            let nC = c + dc
+            if (nR < 0 || nR == M || nC < 0 || nC == N || arr[nR][nC] == "#") continue
+            count += 1
+        }
+        return count >= 3
     }
+
+    const getAllNodes = () => {
+        let nodes = [[0, 1]]   // start
+        for (let r = 1; r < M - 1; r++) {
+            for (let c = 1; c < N - 1; c++) {
+                if (checkIfJunction(r, c)) nodes.push([r, c])
+            }
+        }
+        nodes.push([M - 1, N - 2]) // end
+        return nodes
+    }
+
+    const bfs = ([r1, c1], [r2, c2]) => {
+        // find the shortest dist between these 2 nodes
+        let visited = new Set()
+        let q = [[r1, c1, 0]] // [r,c,step]
+
+        while (q.length) {
+            let [r, c, step] = q.shift()
+
+            let key = toKey([r, c])
+            if (visited.has(key)) continue
+            visited.add(key)
+
+            for (let [dr, dc] of dirs) {
+                let nR = r + dr
+                let nC = c + dc
+                if (nR < 0 || nR == M || nC < 0 || nC == N) continue
+                if (arr[nR][nC] === '#') continue
+
+                if (nR === r2 && nC === c2) {
+                    return step + 1 // foound
+                }
+
+                if (checkIfJunction(nR, nC)) continue
+
+                q.push([nR, nC, step + 1])
+            }
+        }
+        return -1
+    }
+
+    const toKey = ([r, c]) => `${r},${c}`
+
+    const makeGraph = (arr) => {
+        let combo = new Set()
+        let graph = {}
+        for (let [i, nodeA] of arr.entries()) {
+            for (let [j, nodeB] of arr.entries()) {
+                if (i == j) continue
+                let nodes = [nodeA, nodeB].sort((a, b) => a[0] - b[0] || a[1] - b[1])
+                let comboKey = `${toKey(nodes[0])}->${toKey(nodes[1])}`
+                if (combo.has(comboKey)) continue
+                combo.add(comboKey)
+                let dist = bfs(nodeA, nodeB)
+                if (dist !== -1) {
+                    graph[toKey(nodeA)] ??= []
+                    graph[toKey(nodeB)] ??= []
+                    graph[toKey(nodeA)].push([...nodeB, dist])
+                    graph[toKey(nodeB)].push([...nodeA, dist])
+                }
+            }
+        }
+        return graph
+    }
+
+    let nodes = getAllNodes()
+    let graph = makeGraph(nodes)
+
+    console.log(nodes)
+    console.log(graph)
+
+    console.log(nodes.length)
+
+    const dfs = (r, c, visited) => {
+        // find the longest to end
+        let res = -Infinity
+        if (r == M - 1 && c == N - 2) {
+            return 0
+        }
+        let currNode = toKey([r, c])
+
+        for (let [nR, nC, step] of graph[currNode]) {
+            if(visited[nR][nC]) continue
+            visited[nR][nC] = true
+
+            res = Math.max(
+                res,
+                dfs(nR, nC, visited) + step
+            )
+
+            // backtrack
+            visited[nR][nC] = false
+        }
+
+        return res
+    }
+
+    let visited = Array(M).fill().map(_ => Array(N).fill(false))
+    visited[0][1] = true
+
+    return dfs(0, 1, visited)
 }
 
+
+
 const main = (fileName) => {
-
-    // const LABELS = "ABCDEFG"
-    let i = 0
-
+    console.time("main")
     const lines = fs.readFileSync(fileName, "utf8")
         .split("\r\n");
 
-    const blocks = []
+    const arr = []
 
-    let regex = /^(\d+),(\d+),(\d+)~(\d+),(\d+),(\d+)$/
     for (let ln of lines) {
-        // console.log(ln)
-        let [x1, y1, z1, x2, y2, z2] = ln.match(regex)
-            .slice(1, 7)
-            .map(Number)
-        // blocks.push(new Block(x1, y1, z1, x2, y2, z2, LABELS[i++]))
-        blocks.push(new Block(x1, y1, z1, x2, y2, z2, String(i++)))
-    }
-    // console.log(blocks)
-
-    sortByZ(blocks)
-
-    let placedBlocks = []
-
-    for (let b of blocks) {
-        let firstCollided = findCollided(b, placedBlocks)
-        let bHeight = Math.abs(b.z2 - b.z1)
-        if (!firstCollided) {
-            // first block
-            let groundZ = 1
-            let newB = new Block(b.x1, b.y1, groundZ, b.x2, b.y2, groundZ + bHeight, b.label)
-            placedBlocks.push(newB)
-            continue
-        }
-
-        // found the first collided block
-        // console.log({ b, firstCollided })
-        let newZ = Math.max(firstCollided.z1, firstCollided.z2) + 1
-        let newB = new Block(b.x1, b.y1, newZ, b.x2, b.y2, newZ + bHeight, b.label)
-        placedBlocks.push(newB)
+        ln = ln.replaceAll(/[\^v<>]/g, ".")
+        arr.push(ln.split(''))
+        console.log(ln)
     }
 
-    // build blockToSupportMap
-    let blockToSupportingBlocks = buildBlockToSupportingBlocksMap(placedBlocks)
-    let blockToUpperBlocks = buildBlockToUpperBlocks(placedBlocks)
-
-    console.log(blockToSupportingBlocks)
-    console.log(blockToUpperBlocks)
-
-    let res = 0
-
-
-    for (let j = 0; j < i; j++) {
-        res += topologicalSortFind(j, blockToUpperBlocks)
-    }
-
+    // console.log(arr)
+    let res = solve(arr)
+    console.timeEnd("main")
     return res
 }
 
-const topologicalSortFind = (blockId, blockToUpperBlocks) => {
-    let N = Object.keys(blockToUpperBlocks).length
-    let inDeg = Array(N).fill(0)
 
-    for (let arr of Object.values(blockToUpperBlocks)) {
-        arr.forEach(node => inDeg[Number(node)] += 1)
-    }
+// console.log(main("sample.txt"))   // RUN FOR SAMPLE , expected = 154
 
-    let res = 0
+console.log(main("input.txt"))   // RUN FOR FULL INPUT, CORRECT = 6542
+// 4810 , too low
 
-    let q = [String(blockId)]
-    while (q.length) {
-        node = q.shift()
-        res += 1
-        for (let next of blockToUpperBlocks[node]) {
-            inDeg[next] -= 1
-            if (inDeg[next] === 0) q.push(next)
-        }
-    }
-    return res - 1
-}
-
-const buildBlockToUpperBlocks = (placedBlocks) => {
-    let res = {}
-
-    for (let b1 of placedBlocks) {
-        let blocksAbove = placedBlocks.filter(b2 => {
-            if (b1.label === b2.label) return false
-            let isB2onB1 = Math.max(b1.z1, b1.z2) + 1 === Math.min(b2.z1, b2.z2)
-            return isB2onB1 && canCollide(b1, b2)
-        })
-        res[b1.label] = blocksAbove.map(b => b.label)
-    }
-
-    return res
-}
-
-const buildBlockToSupportingBlocksMap = (placedBlocks) => {
-    let res = {}
-
-    for (let b1 of placedBlocks) {
-        let blocksBelow = placedBlocks.filter(b2 => {
-            if (b1.label === b2.label) return false
-            let isB1onB2 = Math.max(b2.z1, b2.z2) + 1 === Math.min(b1.z1, b1.z2)
-            return isB1onB2 && canCollide(b1, b2)
-        })
-        res[b1.label] = new Set(blocksBelow.map(b => b.label))
-    }
-
-    return res
-}
-
-const findCollided = (b, blocks) => {
-    // iterate from end of blocks to front
-    if (!blocks.length) return undefined
-    return blocks.filter(b2 => canCollide(b, b2))
-        .sort((a, b) => Math.max(a.z1, a.z2) - Math.max(b.z1, b.z2))        // the highest Z block, will be the one collided
-        .at(-1)
-}
-
-const canCollide = (a, b) => {
-    return xAxisCollide(a, b) && yAxisCollide(a, b)
-}
-
-const xAxisCollide = (a, b) => {
-    return a.x2 >= b.x1 && a.x1 <= b.x2
-}
-
-const yAxisCollide = (a, b) => {
-    return a.y2 >= b.y1 && a.y1 <= b.y2
-}
-
-const sortByZ = (arr) => {
-    arr.sort((a, b) => Math.min(a.z1, a.z2) - Math.min(b.z1, b.z2)) // by Z, ASC
-}
-
-
-// console.log(main("sample.txt"))   // RUN FOR SAMPLE
-
-console.log(main("input.txt"))   // RUN FOR FULL INPUT
-
-// 61920 !!
 
 
